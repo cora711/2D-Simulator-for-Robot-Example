@@ -16,9 +16,14 @@ image_size = (150,200)
 
 number_of_resources = 400
 number_of_workers = 9
-number_of_supervisors = 1
 
 total_generations = 3000
+
+"""
+FIXED PARAMETER:
+"""
+
+number_of_supervisors = 1
 
 """
 SYSTEM FUNCTIONS
