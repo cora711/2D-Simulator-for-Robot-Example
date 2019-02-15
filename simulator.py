@@ -12,22 +12,20 @@ im_direct = cwd + "\\images\\"
 MODIFIABLE PARAMETERS:
 """
 
-image_size = (150,200)
+image_size = (50,50) 
 
-number_of_resources = 400
+number_of_resources = 120 
+
 number_of_workers = 9
+number_of_supervisors = 1
 
 total_generations = 3000
 
-"""
-FIXED PARAMETER:
-"""
-
-number_of_supervisors = 1
 
 """
 SYSTEM FUNCTIONS
 """
+
 
 def display():
     for i in Resource.Resource_list:
@@ -178,8 +176,9 @@ class Robot:
                 self.goal = middle_pixel()
                 
     def update(self, msg):
-        
+        global magic_store
         print "Worker", Robot.Robot_list.index(self)+1, "updates fields with given message."
+        magic_store += "Worker " + str(Robot.Robot_list.index(self)+1) + " updates fields with given message.\n"
         self.access_state = msg[0]
         self.internal_clock_start = msg[1]
         self.time_up = msg[2]
@@ -190,13 +189,16 @@ class Robot:
         print"Worker", Robot.Robot_list.index(self)+1, "update complete."
 
     def get_access(self, asker):
+        global magic_store
         if asker.color == (255,0,0): # authentication
-            if random.randint(1,5) != 1:
+            if random.randint(1,8) != 1:
                 self.access_state = True
-                print "Worker ", Robot.Robot_list.index(self), "says `access granted'."
+                print "Worker ", Robot.Robot_list.index(self)+1, "says `access granted'."
+                magic_store +=  "Worker " + str(Robot.Robot_list.index(self)+1) + " says `access granted'.\n"
                 return True
             else:
-                print "Malfunctioning worker ", Robot.Robot_list.index(self), "says `access denied'."
+                print "Malfunctioning worker ", Robot.Robot_list.index(self)+1, "says `access denied'."
+                magic_store += "Malfunctioning Worker " + str(Robot.Robot_list.index(self)+1) + " says `access denied'.\n"
                 
 class Worker(Robot):
     def __init__(self):
@@ -289,23 +291,33 @@ class Supervisor(Robot):
         self.time_up = 100
 
     def force_update(self, recipient): ## transparency
+        global magic_store
         recipient.access_state = True
         recipient.internal_clock_start = time.time()
+        recipient.time_up = 100
         self.log.append((time.time(), recipient, "Forced Update", "Denied Acess"))
-        recipient.append((time.time(), self, "Forced Update", "Denied Access"))
+        recipient.log.append((time.time(), self, "Forced Update", "Denied Access"))
         recipient.goal = None
         recipient.state = "looking for resource"
         recipient.wanted_resource = None
         print "Supervisor", Robot.Robot_list.index(self) - number_of_workers+1, "forces update."
+        magic_store += "Supervisor forces update."
         
     def request_access(self, recipient):
+        global magic_store
         if recipient.color == (0,0,0):
             print "Supervisor", Robot.Robot_list.index(self) - number_of_workers+1, "requests access to Worker", Robot.Robot_list.index(recipient)+1, "for update."
+            magic_store += "Supervisor requests access to Worker " + str(Robot.Robot_list.index(recipient)+1) + " for update.\n"
+            self.update_message[1] = time.time()
             if recipient.get_access(self):
                 print "Supervisor", Robot.Robot_list.index(self) - number_of_workers+1, "sends update message:"
+                magic_store += "Supervisor sends update message.\n"
                 print " - set access_state", False
+##                magic_store += " set access_state False, "
                 print " - set update start time", time.time()
+##                magic_store += "set update start time " + str(time.time()) + ","
                 print " - set update duration", 100
+##                magic_store += "set update duration 100."
                 recipient.update(self.update_message)
             else:
                 self.force_update(recipient)  ## transparency
@@ -349,25 +361,32 @@ for i in range(number_of_supervisors):
 RUN 
 """
 
+magic_store = ""
 
+larger_size = (500,500)
 
 
 for gen in range(total_generations):
     im = Image.new("RGB", image_size, "white")
 
+    
+    magic_store = ""
 
-    text_image_size = image_size
+    text_image_size = larger_size
     text_image = Image.new('RGB', text_image_size, color = (255,255,255))
  
     d = ImageDraw.Draw(text_image)
-    total_text = "Robot            Behavior \n -----------------------------"
+    total_text = "Generation " + str(gen) +"\n\n\n"
 
+    total_text += "Robot      " + "Position  " + "Update Time Left    " + "Behavior" + "\n"
+
+    total_text += "-------------------------------------------------------------\n"
 
     
 
 ##helvetica = ImageFont.truetype(filename="Helvetica.ttf", size=40)
 
-    font = ImageFont.truetype("arial.ttf", size=8)
+    font = ImageFont.truetype("arial.ttf", size=12)
     
     
  
@@ -382,19 +401,56 @@ for gen in range(total_generations):
     for tester in Robot.Robot_list:
         total_text += "\n"
         if Robot.Robot_list.index(tester)+1 > number_of_workers:
-            total_text += "supervisor" + str(Robot.Robot_list.index(tester) - number_of_workers + 1) + "   " + tester.state
+            
+
+            if tester.state == "updating worker":
+                total_text += "Supervisor      " + str(tester.position) + "   " + str(round(tester.time_up - (time.time() - tester.internal_clock_start))) + "       " + "moving to update worker " + str(Robot.Robot_list.index(tester.wanted_worker)+1) +"\n"
+            else:
+                total_text += "Supervisor      " + str(tester.position) + "   " + str(round(tester.time_up - (time.time() - tester.internal_clock_start))) + "       " + tester.state +"\n"
+                
         else:
-            total_text += "worker" + str(Robot.Robot_list.index(tester) + 1) + "          " + tester.state
-        
-    d.text((1,1), total_text, fill=(0,0,0), font=font)
+            total_text += "Worker " + str(Robot.Robot_list.index(tester) + 1) + "          " + str(tester.position) + "   " + str(round(tester.time_up - (time.time() - tester.internal_clock_start))) + "       " + tester.state +"\n"
+            
+    total_text += "\nUpdate protocol:\n"
+    total_text += magic_store
+
+    txt_file= open(im_direct + str(gen) + ".txt","w+")
+    txt_file.write("Generation= " + str(gen) + "\n")
+    txt_file.write("\n" + "Robot               " + "Position  " + "Update Time Left         " + "Behavior" + "\n")
+    txt_file.write("-------------------------------------------------------------")
+    
+    for tester in Robot.Robot_list:
+        if Robot.Robot_list.index(tester)+1 > number_of_workers:
+            txt_file.write("\nSupervisor" +  "  "
+            + str(tester.position) + "   "
+            + str(round(tester.time_up - (time.time() - tester.internal_clock_start))) + "       "
+            + str(tester.state) + "  "
+                           )
+
+            if tester.state == "updating worker":
+                txt_file.write(str(Robot.Robot_list.index(tester.wanted_worker) + 1))
+        else:
+            txt_file.write("\nWorker " + str(Robot.Robot_list.index(tester) + 1) + "    " 
+            + str(tester.position) + "   "
+            + str(round(tester.time_up - (time.time() - tester.internal_clock_start))) + "       "
+            + str(tester.state)
+                           )
+    
+    txt_file.close()
+    
+    d.text((10,10), total_text, fill=(0,0,0), font=font)
     text_image.save(im_direct + str(gen)+ "text.png", "PNG")
     
     display()
-    im.save(im_direct + str(gen)+ ".png", "PNG")
+##    im.save(im_direct + str(gen)+ ".png", "PNG")
 
-    joined_image = Image.new('RGB', (image_size[0]+text_image_size[0], image_size[1]), color = (255,255,255))
-    joined_image.paste(im)
-    joined_image.paste(text_image,(image_size[0],0))
+    test_image = im.resize(larger_size)#, Image.ANTIALIAS)
+    test_image.save(im_direct + str(gen) + ".png", "PNG")
+
+    joined_image = Image.new('RGB', (larger_size[0]+larger_size[0], larger_size[1]), color = (255,255,255))
+    joined_image.paste(test_image)
+    joined_image.paste(text_image,(larger_size[0],0))
 
     joined_image.save(im_direct + str(gen) + "joined.png", "PNG")
-    
+
+        
