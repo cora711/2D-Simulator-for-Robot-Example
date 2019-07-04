@@ -255,12 +255,6 @@ class Supervisor(Robot):
             False          
             ]
 
-##    def ask(self, recipient):
-##        self.request_access(recipient)
-##        self.state = "looking for worker to update"
-##        self.goal = free_space()
-##        self.wanted_worker = None
-
     def find_worker_needing_help(self):
         if self.state == "looking for worker to update":
             for i in Robot.Robot_list:
