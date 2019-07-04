@@ -1,5 +1,5 @@
 # 2D-Simulator-for-Robot-Example
-This repo contains code for generating images of the simulation and a collection of videos from previous simulation runs.
+This repository contains code for generating images of the simulation and a collection of videos from previous simulation runs.
 
 
 Copy the simulator.py file into a directory of your choosing, and include a folder called "images". When you run the program, it will generate (3000) images which can be converted into a video using external software (e.g., virtuadub).
